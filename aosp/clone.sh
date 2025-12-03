@@ -70,36 +70,42 @@ default_checkout_branch() {
 do_cherrypick() {
   local dest="$1"
   local sha="$2"
-  local optional="$3"  # "no" or "optional"
-  print "  -> Attempt cherry-pick $sha into $dest"
-  # ensure commits are fetched
-  git -C "$dest" fetch --all --tags --prune || print "    (warning) fetch failed; continuing"
-  if git -C "$dest" rev-parse --verify --quiet "$sha" >/dev/null; then
-    print "    commit $sha already present locally"
-  else
-    print "    commit $sha not found locally; trying to fetch from origin..."
-    # Try to fetch origin fully (may be large)
-    git -C "$dest" fetch origin || print "    (warning) fetch origin failed"
+  local optional="$3"
+  local url="$4"
+
+  print "  -> Attempt cherry-pick $sha"
+
+  # 1) Try normal fetch
+  git -C "$dest" fetch --all --tags --prune >/dev/null 2>&1
+
+  # 2) If commit does not exist, fetch it directly from remote repo
+  if ! git -C "$dest" cat-file -e "$sha" 2>/dev/null; then
+    print "    commit missing locally — fetching specifically from $url ..."
+    git -C "$dest" fetch "$url" "$sha" || {
+      if [ "$optional" = "optional" ]; then
+        print "    OPTIONAL patch failed — skipping."
+        return 0
+      else
+        err "    FAILED: commit $sha not found in $url"
+        return 2
+      fi
+    }
   fi
 
-  if ! git -C "$dest" rev-parse --verify --quiet "$sha" >/dev/null; then
-    if [ "$optional" = "optional" ]; then
-      print "    OPTIONAL patch $sha not found in $dest; skipping."
-      return 0
-    else
-      err "    commit $sha not found in $dest after fetch. SKIPPING and reporting error."
-      return 2
-    fi
-  fi
-
-  # Attempt to cherry-pick; if conflict, stop and notify.
+  # 3) Now cherry-pick it
   if git -C "$dest" cherry-pick -x "$sha"; then
-    print "    cherry-pick $sha applied successfully."
+    print "    cherry-pick successful."
     return 0
   else
-    err "    cherry-pick failed for $sha in $dest. You will need to resolve conflicts manually."
-    err "    To continue after resolving: cd $dest && git add <files> && git cherry-pick --continue"
-    err "    To abort: cd $dest && git cherry-pick --abort"
+    if [ "$optional" = "optional" ]; then
+      print "    OPTIONAL cherry-pick failed — skipping."
+      git -C "$dest" cherry-pick --abort
+      return 0
+    fi
+
+    err "    Cherry-pick conflict! Resolve manually:"
+    err "    cd $dest && git status"
+    err "    After fixing: git cherry-pick --continue"
     return 3
   fi
 }
