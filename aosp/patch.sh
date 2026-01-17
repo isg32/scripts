@@ -15,6 +15,7 @@ apply_wpa() {
     echo ">>> Applying patches: external/wpa_supplicant_8"
     cd "$ROOT_DIR/external/wpa_supplicant_8"
     git fetch https://github.com/Nothing-2A/android_external_wpa_supplicant_8
+    git cherry-pick c4868f12d7d3e017dd131081bffb85fea85656b6
     git cherry-pick 39200b6c7b1f9ff1c1c6a6a5e4cd08c6f526d048
     git cherry-pick 37a6e255d9d68fb483d12db550028749b280509b
 }
