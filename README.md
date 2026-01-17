@@ -6,5 +6,5 @@ wget https://github.com/isg32/scripts/raw/refs/heads/main/aosp/clone.sh
 ```
 
 ```
-https://github.com/isg32/scripts/raw/refs/heads/main/aosp/patch.sh
+wget https://github.com/isg32/scripts/raw/refs/heads/main/aosp/patch.sh
 ```
